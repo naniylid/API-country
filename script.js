@@ -3,40 +3,6 @@
 const btn = document.querySelector('.btn-country');
 const countriesContainer = document.querySelector('.countries');
 
-//////////////////////////////////////////////////////
-// const getCountryData = function (country) {
-//   const request = new XMLHttpRequest();
-//   request.open('GET', ` https://restcountries.com/v3.1/name/${country}`);
-//   request.send();
-//   request.addEventListener('load', function () {
-//     //   console.log(this.responseText);
-//     const [data] = JSON.parse(this.responseText);
-//     console.log(data);
-//     const currencies = data.currencies;
-//     const currencyName = Object.values(currencies)[0].name;
-//     const languages = data.languages;
-//     const firstLanguage = Object.values(languages)[0];
-
-//     const html = `
-//   <article class="country">
-//           <img class="country__img" src="${data.flags.svg}" />
-//           <div class="country__data">
-//             <h3 class="country__name">${data.name.common}</h3>
-//             <h4 class="country__region">${data.region}</h4>
-//             <p class="country__row"><span>👨‍👩‍👧‍👦</span>${(
-//               +data.population / 1000000
-//             ).toFixed(2)} миллионов</p>
-//             <p class="country__row"><span>🗣️</span>${firstLanguage}</p>
-//             <p class="country__row"><span>💰</span>${currencyName}</p>
-//           </div>
-//         </article>`;
-//     countriesContainer.insertAdjacentHTML('beforeend', html);
-//     countriesContainer.style.opacity = 1;
-//   });
-// };
-
-// getCountryData('Russia');
-
 const displayCountry = function (data, className = '') {
   const currencies = data.currencies;
   const currencyName = Object.values(currencies)[0].name;
@@ -88,12 +54,9 @@ const getCountryAndBorderCountries = function (country) {
   });
 };
 
-//getCountryAndBorderCountries('Kazakhstan');
-
 // const request = new XMLHttpRequest();
 //   request.open('GET', ` https://restcountries.com/v3.1/name/${country}`);
 //   request.send();
-
 //const request = fetch('https://restcountries.com/v3.1/name/Kazakhstan');
 
 const displayError = function (message) {
@@ -139,10 +102,48 @@ const getCountryData = function (country) {
     });
 };
 
-const displayCountryByGPS = function (lat, lng) {
-  fetch(`https://geocode.xyz/${lat},${lng}?geoit=json`);
+//Промисификация API Геолокации
+const getUserPosition = function () {
+  return new Promise(function (resolve, reject) {
+    navigator.geolocation.getCurrentPosition(resolve, reject);
+  });
+};
+
+const displayUserCountryByGPS = function () {
+  getUserPosition()
+    .then(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+
+      return fetch(`https://geocode.xyz/${lat},${lng}?json=1`);
+    })
+    .then(response => {
+      if (!response.ok)
+        throw new Error(
+          `Проблема с геокодированием (ошибка ${response.status})`
+        );
+      return response.json();
+    })
+    .then(data => {
+      console.log(data);
+      console.log(`You are in ${data.city}, ${data.country}`);
+      return getDataAndConvertToJason(
+        `https://restcountries.com/v3.1/name/${data.country.toLowerCase()}`,
+        'Страна не найдена.'
+      );
+    })
+    .then(data => displayCountry(data[0]))
+    .catch(e => {
+      console.error(`${e} 🧐`);
+      displayError(`Что-то пошло не так 🧐: ${e.message} Попробуйте ещё раз!`);
+    })
+    .finally(() => {
+      countriesContainer.style.opacity = 1;
+    })
+
+    .catch(e => console.error(`${e.message} 🧐`));
 };
 
 btn.addEventListener('click', function () {
   // getCountryData('kazakhstan');
+  displayUserCountryByGPS();
 });
